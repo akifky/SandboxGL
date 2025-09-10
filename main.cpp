@@ -6,26 +6,20 @@
 #include <iostream>
 
 #include "Shaders/Shader.h"
+#include "Objects/Block.h"
+
+const GLenum TOGGLE_POLYGON_KEY = GLFW_KEY_Q;
+const int WINDOW_WIDTH = 512;
+const int WINDOW_HEIGHT = 512;
+const float MOVE_SPEED = 0.001f;
+const float BLOCK_SIZE = 0.05f;
 
 GLFWwindow* window;
-bool isToggleFirewrameKeyDown = false;
 GLenum currentPolygonMode = GL_FILL;
 glm::vec2 pos(0,0);
 
-const GLenum TOGGLE_POLYGON_KEY = GLFW_KEY_Q;
-const int WINDOW_WIDTH = 1024;
-const int WINDOW_HEIGHT = 1024;
-const float MOVE_SPEED = 0.01f;
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-}
-
-bool isKeyPressed(int key)
-{
-    return (glfwGetKey(window, key) == GLFW_PRESS);
-}
+Block block1(0,0,10.0f);
 
 void toggleWireframe(bool _isEnabled)
 {
@@ -39,8 +33,22 @@ void toggleWireframe(bool _isEnabled)
     }
 }
 
-void processInput(GLFWwindow* window)
+bool isKeyPressed(int key)
 {
+    return (glfwGetKey(window, key) == GLFW_PRESS);
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    /*TOGGLE WIREFRAME*/
+
+    if (key == TOGGLE_POLYGON_KEY)
+    {
+        if (action == GLFW_PRESS)
+        {
+			toggleWireframe(currentPolygonMode == GL_FILL);
+        }
+    }
 
     /*ESCAPE*/
 
@@ -48,39 +56,30 @@ void processInput(GLFWwindow* window)
     {
         glfwSetWindowShouldClose(window, true);
     }
+}
 
-    /*TOGGLE WIREFRAME*/
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
 
-    if (isKeyPressed(GLFW_KEY_Q) && !isToggleFirewrameKeyDown)
-    {
-        isToggleFirewrameKeyDown = true;
-        toggleWireframe(currentPolygonMode != GL_LINE);
-    }
-    else if (!isKeyPressed(GLFW_KEY_Q) && isToggleFirewrameKeyDown)
-    {
-        isToggleFirewrameKeyDown = false;
-    }
+void processInput(GLFWwindow* window)
+{
 
     /*MOVEMENT*/
 
-    if (isKeyPressed(GLFW_KEY_A))
+    glm::vec2 dir(0.0f);
+
+    if (isKeyPressed(GLFW_KEY_A)) dir.x -= 1.0f;
+    if (isKeyPressed(GLFW_KEY_D)) dir.x += 1.0f;
+    if (isKeyPressed(GLFW_KEY_W)) dir.y += 1.0f;
+    if (isKeyPressed(GLFW_KEY_S)) dir.y -= 1.0f;
+
+    if (dir != glm::vec2(0.0f))
     {
-        pos.x -= MOVE_SPEED;
-    }
-    if (isKeyPressed(GLFW_KEY_D))
-    {
-        pos.x += MOVE_SPEED;
-    }
-    if (isKeyPressed(GLFW_KEY_W))
-    {
-        pos.y += MOVE_SPEED;
-    }
-    if (isKeyPressed(GLFW_KEY_S))
-    {
-        pos.y -= MOVE_SPEED;
+        block1.move(dir, MOVE_SPEED);
     }
 }
-
 
 int main(void)
 {
@@ -103,6 +102,7 @@ int main(void)
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSetKeyCallback(window, key_callback);
 
     /*Initialize GLAD*/
 
@@ -121,16 +121,14 @@ int main(void)
 
     /*CUBE*/
 
-    const float LENGTH = 0.1;
-
     float vertices[] = {
-        -LENGTH/2, LENGTH/2, 0,
-        -LENGTH/2, -LENGTH/2, 0,
-        LENGTH/2, -LENGTH/2, 0,
+        -BLOCK_SIZE/2, BLOCK_SIZE/2, 0,
+        -BLOCK_SIZE/2, -BLOCK_SIZE/2, 0,
+        BLOCK_SIZE/2, -BLOCK_SIZE/2, 0,
 
-        -LENGTH/2, LENGTH/2, 0,
-        LENGTH/2, LENGTH/2, 0,
-        LENGTH/2, -LENGTH/2, 0
+        -BLOCK_SIZE/2, BLOCK_SIZE/2, 0,
+        BLOCK_SIZE/2, BLOCK_SIZE/2, 0,
+        BLOCK_SIZE/2, -BLOCK_SIZE/2, 0
     };
 
     /*VAO & VBO*/
@@ -153,6 +151,7 @@ int main(void)
     glEnableVertexAttribArray(0);
 
     int posLocation = myShader.getUniformLocation("uPos");
+    int colorLocation = myShader.getUniformLocation("uColor");
 
     /*Window loop*/
 
@@ -163,8 +162,10 @@ int main(void)
         glClearColor(0.2f, 0.3f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);       
 
-        glUniform2f(posLocation, pos.x, pos.y);
+        glUniform2f(posLocation, block1.getPosition().x, block1.getPosition().y);
+        glUniform3f(colorLocation, block1.getColor().x, block1.getColor().y, block1.getColor().z);
         myShader.use();
+
         glBindVertexArray(VAO);
         glEnableVertexAttribArray(0);
         glDrawArrays(GL_TRIANGLES, 0, 6);
