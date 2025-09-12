@@ -131,7 +131,6 @@
   <ItemGroup>
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Objects\Block.cpp" />
     <ClCompile Include="Shaders\Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -141,9 +140,7 @@
     <ClInclude Include="dependencies\include\glad\glad.h" />
     <ClInclude Include="dependencies\include\include\GLFW\glfw3.h" />
     <ClInclude Include="dependencies\include\include\GLFW\glfw3native.h" />
-    <ClInclude Include="Objects\Block.h" />
     <ClInclude Include="Shaders\Shader.h" />
-    <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\shaderfs.glsl" />

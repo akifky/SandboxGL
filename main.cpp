@@ -6,20 +6,40 @@
 #include <iostream>
 
 #include "Shaders/Shader.h"
-#include "Objects/Block.h"
+#include <vector>
 
 const GLenum TOGGLE_POLYGON_KEY = GLFW_KEY_Q;
-const int WINDOW_WIDTH = 512;
-const int WINDOW_HEIGHT = 512;
-const float MOVE_SPEED = 0.001f;
-const float BLOCK_SIZE = 0.05f;
+const int FPS_LIMIT = 60;
+const int WINDOW_WIDTH = 920;
+const int WINDOW_HEIGHT = 920;
+const int SIMULATION_GRID_WIDTH = 460;
+const int SIMULATION_GRID_HEIGHT = 460;
+const float SIMULATION_INTERVAL_IN_SECONDS = 0.05f;
+
+float cellSize = 2.0f / std::max(SIMULATION_GRID_WIDTH, SIMULATION_GRID_HEIGHT);
 
 GLFWwindow* window;
 GLenum currentPolygonMode = GL_FILL;
-glm::vec2 pos(0,0);
+unsigned int quadVBO, instancePositionVBO, tileTypeVBO;
+enum TileType {
+    TILE_EMPTY = 0,
+    TILE_SAND = 1,
+};
+float unitQuad[] = {
+    -0.5f,  0.5f, 0.0f,  // Top Left
+	-0.5f, -0.5f, 0.0f,  // Bottom Left 
+     0.5f, -0.5f, 0.0f,  // Bottom Right
 
-
-Block block1(0,0,10.0f);
+    -0.5f,  0.5f, 0.0f,  // Top Left
+     0.5f,  0.5f, 0.0f,  // Top Right
+	 0.5f, -0.5f, 0.0f   // Bottom Right
+};
+Shader* myShader = NULL;
+std::vector<glm::vec2> cellPositions;
+std::vector<TileType> cellTypes;
+int instanceCount = 0;
+TileType grid[SIMULATION_GRID_HEIGHT][SIMULATION_GRID_WIDTH];
+TileType nextGrid[SIMULATION_GRID_HEIGHT][SIMULATION_GRID_WIDTH]; // For double buffering
 
 void toggleWireframe(bool _isEnabled)
 {
@@ -37,6 +57,12 @@ bool isKeyPressed(int key)
 {
     return (glfwGetKey(window, key) == GLFW_PRESS);
 }
+
+bool isMousePressed(int key)
+{
+    return (glfwGetMouseButton(window, key) == GLFW_PRESS);
+}
+
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -60,28 +86,142 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    glViewport(0, 0, width, height);
+    // glViewport(0, 0, width, height);
 }
 
 void processInput(GLFWwindow* window)
 {
-
-    /*MOVEMENT*/
-
-    glm::vec2 dir(0.0f);
-
-    if (isKeyPressed(GLFW_KEY_A)) dir.x -= 1.0f;
-    if (isKeyPressed(GLFW_KEY_D)) dir.x += 1.0f;
-    if (isKeyPressed(GLFW_KEY_W)) dir.y += 1.0f;
-    if (isKeyPressed(GLFW_KEY_S)) dir.y -= 1.0f;
-
-    if (dir != glm::vec2(0.0f))
+    if(isMousePressed(GLFW_MOUSE_BUTTON_1))
     {
-        block1.move(dir, MOVE_SPEED);
+		double cursorX, cursorY;
+		glfwGetCursorPos(window, &cursorX, &cursorY);
+
+        float cellPixelSizeX = (float)WINDOW_WIDTH / (float)SIMULATION_GRID_WIDTH;
+        float cellPixelSizeY = (float)WINDOW_HEIGHT / (float)SIMULATION_GRID_HEIGHT;
+
+        int gridX = (int)(cursorX / cellPixelSizeX);
+        int gridY = (int)(cursorY / cellPixelSizeY);
+
+        if ((gridX >= 0 && gridX <= SIMULATION_GRID_WIDTH) &&
+            (gridY >= 0 && gridY <= SIMULATION_GRID_HEIGHT))
+        {
+            grid[gridY][gridX] = TILE_SAND;
+        }
+
+        std::cout << "Grid: (" << gridX << "," << gridY << ")\n";
+
     }
 }
 
-int main(void)
+void updateWindowTitleWithFPS(GLFWwindow* window) {
+    static double previousTime = 0.0;
+    static int frameCount = 0;
+    double currentTime = glfwGetTime();
+    frameCount++;
+	// Update FPS every second
+    if (currentTime - previousTime >= 1.0) {
+        double fps = double(frameCount) / (currentTime - previousTime);
+        std::string title = "SandboxGL - FPS: " + std::to_string(int(fps));
+        glfwSetWindowTitle(window, title.c_str());
+        frameCount = 0;
+        previousTime = currentTime;
+    }
+}
+
+void updateInstanceData() {
+
+	// Clear previous data
+	cellPositions.clear();
+	cellTypes.clear();
+
+	// Populate instance data based on the grid
+    for (int y = 0; y < SIMULATION_GRID_HEIGHT; ++y) {
+        for (int x = 0; x < SIMULATION_GRID_WIDTH; ++x) {
+            if (grid[y][x] != TILE_EMPTY) {
+                float worldX = (x * cellSize) - 1.0f + (cellSize / 2.0f);
+                float worldY = 1.0f - (y * cellSize) - (cellSize / 2.0f);
+
+                cellPositions.push_back(glm::vec2(worldX, worldY));
+				cellTypes.push_back(grid[y][x]);
+            }
+        }
+    }
+
+    instanceCount = cellPositions.size();
+}
+
+bool moveCell(int tileX, int tileY, int moveX, int moveY)
+{
+	int newX = tileX + moveX;
+	int newY = tileY + moveY;
+
+    if(newX < 0 || newX >= SIMULATION_GRID_WIDTH ||
+       newY< 0 || newY >= SIMULATION_GRID_HEIGHT)
+    {
+        return false; // Out of bounds
+	}
+
+    if (grid[newY][newX] != TILE_EMPTY || nextGrid[newY][newX] != TILE_EMPTY) {
+		return false; // Target cell already occupied
+    }
+
+    TileType cell = grid[tileY][tileX];
+    if (cell != TILE_EMPTY)
+    {
+		nextGrid[newY][newX] = cell; // Move to new position
+		nextGrid[tileY][tileX] = TILE_EMPTY; // Clear old position
+        return true;
+    }
+    
+	return false; // No cell to move
+
+}
+
+void simulateGrid()
+{
+
+	static double previousTime = 0.0;
+	double currentTime = glfwGetTime();
+    if (currentTime - previousTime > SIMULATION_INTERVAL_IN_SECONDS)
+    {
+		previousTime = currentTime;
+
+        // Initialize nextGrid to current grid state
+        for (int y = 0; y < SIMULATION_GRID_HEIGHT; ++y) {
+            for (int x = 0; x < SIMULATION_GRID_WIDTH; ++x) {
+                nextGrid[y][x] = grid[y][x];
+            }
+        }
+
+        for (int y = 0; y < SIMULATION_GRID_HEIGHT; ++y) {
+            for (int x = 0; x < SIMULATION_GRID_WIDTH; ++x) {
+
+                TileType currentTile = grid[y][x];
+
+                switch (grid[y][x]) {
+
+                case TILE_SAND:
+                    moveCell(x, y, 0, 1);
+                    break;
+                }
+            }
+        }
+		// Swap grids
+        std::swap(grid, nextGrid);
+    }
+}
+
+void sendDataToGPU() {
+    glBindBuffer(GL_ARRAY_BUFFER, instancePositionVBO);
+    glBufferData(GL_ARRAY_BUFFER, cellPositions.size() * sizeof(glm::vec2),
+        cellPositions.data(), GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, tileTypeVBO);
+    glBufferData(GL_ARRAY_BUFFER, cellTypes.size() * sizeof(TileType),
+        cellTypes.data(), GL_DYNAMIC_DRAW);
+}
+
+int main()
 {
     /*Initialize GLFW*/
 
@@ -113,23 +253,10 @@ int main(void)
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     /*Create shader*/
-
-    Shader myShader;
-    myShader.attachShader("./Shaders/shadervs.glsl", GL_VERTEX_SHADER);
-    myShader.attachShader("./Shaders/shaderfs.glsl", GL_FRAGMENT_SHADER);
-    myShader.link();
-
-    /*CUBE*/
-
-    float vertices[] = {
-        -BLOCK_SIZE/2, BLOCK_SIZE/2, 0,
-        -BLOCK_SIZE/2, -BLOCK_SIZE/2, 0,
-        BLOCK_SIZE/2, -BLOCK_SIZE/2, 0,
-
-        -BLOCK_SIZE/2, BLOCK_SIZE/2, 0,
-        BLOCK_SIZE/2, BLOCK_SIZE/2, 0,
-        BLOCK_SIZE/2, -BLOCK_SIZE/2, 0
-    };
+	myShader = new Shader();
+    myShader->attachShader("./Shaders/shadervs.glsl", GL_VERTEX_SHADER);
+    myShader->attachShader("./Shaders/shaderfs.glsl", GL_FRAGMENT_SHADER);
+    myShader->link();
 
     /*VAO & VBO*/
 
@@ -137,42 +264,57 @@ int main(void)
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
 
-    unsigned int VBO;
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glGenBuffers(1, &instancePositionVBO);
+	glGenBuffers(1, &tileTypeVBO);
+	glGenBuffers(1, &quadVBO);
 
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float)*3, (void*)0);
-    glEnableVertexAttribArray(0);
-    
-    /*Position Attribute*/
+	updateInstanceData();
 
+    // quadVBO
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(unitQuad), unitQuad, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+    glVertexAttribDivisor(0, 0);
 
-    int posLocation = myShader.getUniformLocation("uPos");
-    int colorLocation = myShader.getUniformLocation("uColor");
+    // instancePositionVBO
+    glBindBuffer(GL_ARRAY_BUFFER, instancePositionVBO);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribDivisor(1, 1);
+
+    // tileTypeVBO
+    glBindBuffer(GL_ARRAY_BUFFER, tileTypeVBO);
+    glVertexAttribIPointer(2, 1, GL_INT, sizeof(TileType), (void*)0);
+    glEnableVertexAttribArray(2);
+    glVertexAttribDivisor(2, 1);
+
+    glBindVertexArray(VAO);
+
+    // Use Shader
+    int cellSizeLocation = myShader->getUniformLocation("uCellSize");
+    myShader->use();
+
+    glUniform1f(cellSizeLocation, cellSize);
 
     /*Window loop*/
 
     while (!glfwWindowShouldClose(window))
     {
+		updateWindowTitleWithFPS(window);
+        processInput(window);
+
+        simulateGrid();
+        updateInstanceData();
+        sendDataToGPU();
 
         /*Clear Window*/
         glClearColor(0.2f, 0.3f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);       
-
-        glUniform2f(posLocation, block1.getPosition().x, block1.getPosition().y);
-        glUniform3f(colorLocation, block1.getColor().x, block1.getColor().y, block1.getColor().z);
-        myShader.use();
-
-        glBindVertexArray(VAO);
-        glEnableVertexAttribArray(0);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, instanceCount);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
-        processInput(window);
     }
 
     glfwTerminate();

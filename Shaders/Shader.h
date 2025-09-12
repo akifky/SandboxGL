@@ -29,6 +29,8 @@ private:
 	unsigned int _programID;
 
 	std::string getShaderFromFile(const char* fileName);
+
+	void checkShaderCompileErrors(GLuint shader, const std::string& type);
 };
 
 #endif
