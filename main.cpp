@@ -3,12 +3,16 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <iostream>
 
-#include "Shaders/Shader.h"
-#include "Objects/SandboxWindow.h"
+#include <iostream>
 #include <vector>
 #include <string>
+#include <random>
+
+#include "Shaders/Shader.h"
+#include "Objects/SandboxGUI.h"
+
+
 
 const GLenum TOGGLE_POLYGON_KEY = GLFW_KEY_Q;
 const int FPS_LIMIT = 60;
@@ -16,10 +20,14 @@ const int WINDOW_WIDTH = 920;
 const int WINDOW_HEIGHT = 920;
 const int SIMULATION_GRID_WIDTH = 460;
 const int SIMULATION_GRID_HEIGHT = 460;
-const int SIMULATION_EVERY_N_FRAMES = 3;
+const int SIMULATION_INTERVAL_IN_FRAMES = 3;
+int BRUSH_SIZE = 30;
+float BRUSH_DENSITY = 0.01f; // Between 0 and 1
 
 float cellSize = 2.0f / std::max(SIMULATION_GRID_WIDTH, SIMULATION_GRID_HEIGHT);
 
+std::default_random_engine rng(std::random_device{}());
+std::uniform_real_distribution<float> dist(0.0f, 1.0f);
 GLFWwindow* window;
 GLenum currentPolygonMode = GL_FILL;
 unsigned int quadVBO, instancePositionVBO, tileTypeVBO;
@@ -45,9 +53,8 @@ int frameCounter = 0;
 TileType grid[SIMULATION_GRID_HEIGHT][SIMULATION_GRID_WIDTH];
 TileType nextGrid[SIMULATION_GRID_HEIGHT][SIMULATION_GRID_WIDTH]; // For double buffering
 TileType selectedType = TILE_SAND;
-SandboxWindow* sandboxGui;
-std::string FPSstring;
-std::string TileString;
+SandboxGUI* sandboxGui;
+double FPS = -1;
 
 void toggleWireframe(bool _isEnabled)
 {
@@ -73,7 +80,7 @@ bool isMousePressed(int key)
 
 bool isSimulationFrame()
 {
-    return (frameCounter % SIMULATION_EVERY_N_FRAMES == 0);
+    return (frameCounter % SIMULATION_INTERVAL_IN_FRAMES == 0);
 }
 
 bool isValidTile(int x, int y)
@@ -103,12 +110,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if (isKeyPressed(GLFW_KEY_1))
     {
         selectedType = TILE_SAND;
-        TileString = "Sand";
     }
     if (isKeyPressed(GLFW_KEY_2))
     {
         selectedType = TILE_WATER;
-        TileString = "Water";
     }
 }
 
@@ -119,27 +124,21 @@ void updateFpsValue(GLFWwindow* window) {
     frameCount++;
     // Update FPS every second
     if (currentTime - previousTime >= 1.0) {
-        double fps = double(frameCount) / (currentTime - previousTime);
-        FPSstring = "FPS: " + std::to_string(int(fps));
+        FPS = double(frameCount) / (currentTime - previousTime);
         frameCount = 0;
         previousTime = currentTime;
     }
 }
 
-void setSelectedTileType(TileType type)
+std::string getTileName(TileType type)
 {
-    switch (type) {
+    switch (type)
+    {
+    case TILE_EMPTY: return "Air";
+    case TILE_SAND: return "Sand";
+    case TILE_WATER: return "Water";
 
-    case TILE_EMPTY:
-        TileString = "Empty";
-        break;
-    case TILE_SAND:
-        TileString = "Sand";
-        break;
-    case TILE_WATER:
-        TileString = "Water";
-        break;
-    
+    default: return "Unknown";
     }
 }
 
@@ -157,56 +156,90 @@ void processInput(GLFWwindow* window)
         int gridY = (int)(cursorY / cellPixelSizeY);
 
         
-        int brushSize = 10;
-        for (int dy = brushSize / 2 * -1; dy <= brushSize / 2; dy++) {
-            for (int dx = brushSize / 2 * -1; dx <= brushSize / 2; dx++) {
 
-                if (isValidTile(gridX + dx, gridY + dy))
+        for (int dy = BRUSH_SIZE / 2 * -1; dy <= BRUSH_SIZE/ 2; ++dy) {
+            for (int dx = BRUSH_SIZE / 2 * -1; dx <= BRUSH_SIZE / 2; ++dx) {
+
+                if (dist(rng) < BRUSH_DENSITY)
                 {
+                    if (isValidTile(gridX + dx, gridY + dy))
+                    {
                         grid[gridY + dy][gridX + dx] = selectedType;
+                    }
                 }
             }
         }       
     }
 }
 
-bool moveCell(int tileX, int tileY, int moveX, int moveY)
-{
-	int newX = tileX + moveX;
-	int newY = tileY + moveY;
 
-    TileType cell = grid[tileY][tileX];
-    if (cell != TILE_EMPTY)
+void swapTiles(int x1, int y1, int x2, int y2)
+{
+    if (!isValidTile(x1, y1) || !isValidTile(x2, y2)) { return; }
+
+    TileType cell_1 = nextGrid[y1][x1];
+    TileType cell_2 = nextGrid[y2][x2];
+    nextGrid[y1][x1] = cell_2;
+    nextGrid[y2][x2] = cell_1;
+}
+
+bool moveTile(int tileX, int tileY, int moveX, int moveY)
+{
+    int newX = tileX + moveX;
+    int newY = tileY + moveY;
+    if (!isValidTile(newX, newY) || !isValidTile(tileX, tileY)) { return false; } // Tile is not valid
+
+    TileType tile = grid[tileY][tileX];
+    TileType targetTile = nextGrid[newY][newX];
+
+    if (tile == TILE_EMPTY) { return false; } // Source tile is empty
+
+    switch (tile)
     {
-        if (isValidTile(newX, newY) && grid[newY][newX] == TILE_EMPTY && nextGrid[newY][newX] == TILE_EMPTY)
+    case TILE_SAND: // Sand Movement
+        switch (targetTile)
         {
-            nextGrid[newY][newX] = cell; // Move down
-            nextGrid[tileY][tileX] = TILE_EMPTY; // Clear old position
+
+        case TILE_EMPTY: // SAND X AIR
+            swapTiles(tileX, tileY, newX, newY);
             return true;
+        case TILE_WATER: // SAND X WATER
+            swapTiles(tileX, tileY, newX, newY);
+            return true;
+
+        default: return false;
         }
+    case TILE_WATER:
+        switch (targetTile)
+        {
+        case TILE_EMPTY:
+            swapTiles(tileX,tileY,newX,newY);
+            return true;
+        default: return false;
+        }
+
+    default: return false;
     }
-    
-	return false; 
 
 }
 
 void simulateGrid()
 {
-
-	static double previousTime = 0.0;
-	double currentTime = glfwGetTime();
+    static double previousTime = 0.0;
+    double currentTime = glfwGetTime();
     if (isSimulationFrame())
     {
-		previousTime = currentTime;
+        previousTime = currentTime;
 
-        // Initialize nextGrid to current grid state
+        // Copy the grid
         for (int y = 0; y < SIMULATION_GRID_HEIGHT; ++y) {
             for (int x = 0; x < SIMULATION_GRID_WIDTH; ++x) {
                 nextGrid[y][x] = grid[y][x];
             }
         }
 
-        for (int y = 0; y < SIMULATION_GRID_HEIGHT; ++y) {
+        // Bottom Left - > Top Right loop
+        for (int y = SIMULATION_GRID_HEIGHT - 1; y >= 0; --y) {
             for (int x = 0; x < SIMULATION_GRID_WIDTH; ++x) {
 
                 TileType currentTile = grid[y][x];
@@ -214,23 +247,23 @@ void simulateGrid()
                 switch (grid[y][x]) {
 
                 case TILE_SAND:
-                    if (moveCell(x, y, 0, 1)) { break; } // Down
-                    else if (moveCell(x, y, -1, 1)) { break; } // Down - Left
-                    else if (moveCell(x, y, 1, 1)) { break; } // Down - Right
+                    if (moveTile(x, y, 0, 1)) { break; } // Down
+                    else if (moveTile(x, y, -1, 1)) { break; } // Down - Left
+                    else if (moveTile(x, y, 1, 1)) { break; } // Down - Right
                     break;
 
                 case TILE_WATER:
-                    if (moveCell(x, y, 0, 1)) { break; } // Down
-                    else if (moveCell(x, y, -1, 1)) { break; } // Down - Left
-                    else if (moveCell(x, y, 1, 1)) { break; } // Down - Right
+                    if (moveTile(x, y, 0, 1)) { break; } // Down
+                    else if (moveTile(x, y, -1, 1)) { break; } // Down - Left
+                    else if (moveTile(x, y, 1, 1)) { break; } // Down - Right
 
-                    else if (moveCell(x, y, -4, 0)) { break; } // Left
-                    else if (moveCell(x, y, 4, 0)) { break; } // Right
+                    else if (moveTile(x, y, -4, 0)) { break; } // Left
+                    else if (moveTile(x, y, 4, 0)) { break; } // Right
                     break;
                 }
             }
         }
-		// Swap grids
+        // Swap grids
         std::swap(grid, nextGrid);
     }
 }
@@ -305,7 +338,7 @@ int main()
     myShader->link();
 
     //Create GUI
-    sandboxGui = new SandboxWindow(window);
+    sandboxGui = new SandboxGUI(window);
 
     // VAO & VBO
 
@@ -348,8 +381,6 @@ int main()
 
     glfwSwapInterval(1);
 
-    setSelectedTileType(selectedType); //Update GUI Text
-
     /*Window loop*/
 
     while (!glfwWindowShouldClose(window))
@@ -369,8 +400,12 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);       
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, instanceCount);
 
-        sandboxGui->addText(&FPSstring);
-        sandboxGui->addText(&TileString);
+        sandboxGui->addText("FPS: " + std::to_string(int(FPS)));
+        sandboxGui->addText("Instance Count: " + std::to_string(int(instanceCount)));
+        sandboxGui->addText("Type: " + getTileName(selectedType));
+        sandboxGui->addIntSlider("Brush Size", BRUSH_SIZE, 1, 50);
+        sandboxGui->addFloatSlider("Brush Density", BRUSH_DENSITY, 0.005f, 0.05f);
+
 
         sandboxGui->render();
 

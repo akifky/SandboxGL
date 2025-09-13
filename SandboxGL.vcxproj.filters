@@ -45,7 +45,7 @@
     <ClCompile Include="dependencies\include\imgui\imgui_widgets.cpp">
       <Filter>Kaynak Dosyalar</Filter>
     </ClCompile>
-    <ClCompile Include="Objects\SandboxWindow.cpp">
+    <ClCompile Include="Objects\SandboxGUI.cpp">
       <Filter>Kaynak Dosyalar</Filter>
     </ClCompile>
   </ItemGroup>
@@ -89,7 +89,7 @@
     <ClInclude Include="dependencies\include\imgui\imstb_truetype.h">
       <Filter>Üst Bilgi Dosyaları</Filter>
     </ClInclude>
-    <ClInclude Include="Objects\SandboxWindow.h">
+    <ClInclude Include="Objects\SandboxGUI.h">
       <Filter>Üst Bilgi Dosyaları</Filter>
     </ClInclude>
   </ItemGroup>

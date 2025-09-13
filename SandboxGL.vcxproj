@@ -137,7 +137,7 @@
     <ClCompile Include="dependencies\include\imgui\imgui_tables.cpp" />
     <ClCompile Include="dependencies\include\imgui\imgui_widgets.cpp" />
     <ClCompile Include="glad.c" />
-    <ClCompile Include="Objects\SandboxWindow.cpp" />
+    <ClCompile Include="Objects\SandboxGUI.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Shaders\Shader.cpp" />
   </ItemGroup>
@@ -156,7 +156,7 @@
     <ClInclude Include="dependencies\include\imgui\imstb_truetype.h" />
     <ClInclude Include="dependencies\include\include\GLFW\glfw3.h" />
     <ClInclude Include="dependencies\include\include\GLFW\glfw3native.h" />
-    <ClInclude Include="Objects\SandboxWindow.h" />
+    <ClInclude Include="Objects\SandboxGUI.h" />
     <ClInclude Include="Shaders\Shader.h" />
   </ItemGroup>
   <ItemGroup>
