@@ -23,26 +23,34 @@ void Shader::attachShader(const char* fileName, GLenum shaderType) {
 
 	glShaderSource(shaderID,1, &shaderSource_char, 0);
 	glCompileShader(shaderID);
+    checkShaderCompileErrors(shaderID, shaderType == GL_VERTEX_SHADER ? "VERTEX" : "FRAGMENT");
 	glAttachShader(_programID,shaderID);
 	glDeleteShader(shaderID);
 }
 
 std::string Shader::getShaderFromFile(const char* fileName) {
+    std::ifstream file(fileName);
+    std::string data;
 
-	std::ifstream file(fileName);
-	std::string data;
+    if (!file.is_open()) {
+        std::cerr << "Error: Cannot open shader file: " << fileName << "\n";
+        return data;
+    }
 
-	if (file.is_open())
-	{
-		char readChar;
+    char readChar;
+    while ((readChar = file.get()) != EOF) {
+        data += readChar;
+    }
+    file.close();
+    return data;
+}
 
-		while ((readChar = file.get()) != EOF)
-		{
-			data += readChar;
-		}
-
-		file.close();
-	}
-
-	return data;
+void Shader::checkShaderCompileErrors(GLuint shader, const std::string& type) {
+    GLint success;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        GLchar infoLog[1024];
+        glGetShaderInfoLog(shader, 1024, nullptr, infoLog);
+        std::cerr << "Error: Shader Compile Error (" << type << "): " << infoLog << "\n";
+    }
 }
