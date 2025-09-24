@@ -19,7 +19,7 @@ void SandboxGUI::update()
 
 void SandboxGUI::addText(const std::string text)
 {
-    texts.push_back(text);
+	ImGui::Text(text.c_str());
 }
 
 void SandboxGUI::addIntSlider(std::string sliderName, int &var, int min, int max)
@@ -34,20 +34,11 @@ void SandboxGUI::addFloatSlider(std::string sliderName, float& var, float min, f
 
 void SandboxGUI::render()
 {
-    ImGui::Begin("Sandbox HUD");
-
-    for (auto t : texts)
-    {
-        ImGui::Text(t.c_str());
-    }
-
-
-    ImGui::End();
+    /*ImGui::Begin("Sandbox HUD");
+    ImGui::End();*/
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-    texts.clear();
 }
 
 void SandboxGUI::destroy()

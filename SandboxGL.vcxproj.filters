@@ -13,39 +13,54 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Kaynak Dosyalar\ThirdParty">
+      <UniqueIdentifier>{78637d3e-53e9-4bbd-b825-006017421403}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Kaynak Dosyalar</Filter>
     </ClCompile>
-    <ClCompile Include="glad.c">
-      <Filter>Kaynak Dosyalar</Filter>
-    </ClCompile>
     <ClCompile Include="Shaders\Shader.cpp">
       <Filter>Kaynak Dosyalar</Filter>
     </ClCompile>
-    <ClCompile Include="dependencies\include\imgui\imgui.cpp">
-      <Filter>Kaynak Dosyalar</Filter>
-    </ClCompile>
-    <ClCompile Include="dependencies\include\imgui\imgui_demo.cpp">
-      <Filter>Kaynak Dosyalar</Filter>
-    </ClCompile>
-    <ClCompile Include="dependencies\include\imgui\imgui_draw.cpp">
-      <Filter>Kaynak Dosyalar</Filter>
-    </ClCompile>
-    <ClCompile Include="dependencies\include\imgui\imgui_impl_glfw.cpp">
-      <Filter>Kaynak Dosyalar</Filter>
-    </ClCompile>
-    <ClCompile Include="dependencies\include\imgui\imgui_impl_opengl3.cpp">
-      <Filter>Kaynak Dosyalar</Filter>
-    </ClCompile>
-    <ClCompile Include="dependencies\include\imgui\imgui_tables.cpp">
+    <ClCompile Include="Objects\SandboxGUI.cpp">
       <Filter>Kaynak Dosyalar</Filter>
     </ClCompile>
     <ClCompile Include="dependencies\include\imgui\imgui_widgets.cpp">
+      <Filter>Kaynak Dosyalar\ThirdParty</Filter>
+    </ClCompile>
+    <ClCompile Include="glad.c">
+      <Filter>Kaynak Dosyalar\ThirdParty</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\include\imgui\imgui.cpp">
+      <Filter>Kaynak Dosyalar\ThirdParty</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\include\imgui\imgui_demo.cpp">
+      <Filter>Kaynak Dosyalar\ThirdParty</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\include\imgui\imgui_draw.cpp">
+      <Filter>Kaynak Dosyalar\ThirdParty</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\include\imgui\imgui_impl_glfw.cpp">
+      <Filter>Kaynak Dosyalar\ThirdParty</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\include\imgui\imgui_impl_opengl3.cpp">
+      <Filter>Kaynak Dosyalar\ThirdParty</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\include\imgui\imgui_tables.cpp">
+      <Filter>Kaynak Dosyalar\ThirdParty</Filter>
+    </ClCompile>
+    <ClCompile Include="InputManager.cpp">
       <Filter>Kaynak Dosyalar</Filter>
     </ClCompile>
-    <ClCompile Include="Objects\SandboxGUI.cpp">
+    <ClCompile Include="Simulation.cpp">
+      <Filter>Kaynak Dosyalar</Filter>
+    </ClCompile>
+    <ClCompile Include="FrameCounter.cpp">
+      <Filter>Kaynak Dosyalar</Filter>
+    </ClCompile>
+    <ClCompile Include="Config.cpp">
       <Filter>Kaynak Dosyalar</Filter>
     </ClCompile>
   </ItemGroup>
@@ -90,6 +105,18 @@
       <Filter>Üst Bilgi Dosyaları</Filter>
     </ClInclude>
     <ClInclude Include="Objects\SandboxGUI.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
+    </ClInclude>
+    <ClInclude Include="Config.h">
+      <Filter>Kaynak Dosyalar</Filter>
+    </ClInclude>
+    <ClInclude Include="InputManager.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
+    </ClInclude>
+    <ClInclude Include="FrameCounter.h">
       <Filter>Üst Bilgi Dosyaları</Filter>
     </ClInclude>
   </ItemGroup>

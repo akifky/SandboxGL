@@ -129,6 +129,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Config.cpp" />
     <ClCompile Include="dependencies\include\imgui\imgui.cpp" />
     <ClCompile Include="dependencies\include\imgui\imgui_demo.cpp" />
     <ClCompile Include="dependencies\include\imgui\imgui_draw.cpp" />
@@ -136,15 +137,19 @@
     <ClCompile Include="dependencies\include\imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="dependencies\include\imgui\imgui_tables.cpp" />
     <ClCompile Include="dependencies\include\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="FrameCounter.cpp" />
     <ClCompile Include="glad.c" />
+    <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="Objects\SandboxGUI.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Shaders\Shader.cpp" />
+    <ClCompile Include="Simulation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="dependencies\lib\glfw3.lib" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Config.h" />
     <ClInclude Include="dependencies\include\glad\glad.h" />
     <ClInclude Include="dependencies\include\imgui\imconfig.h" />
     <ClInclude Include="dependencies\include\imgui\imgui.h" />
@@ -156,8 +161,11 @@
     <ClInclude Include="dependencies\include\imgui\imstb_truetype.h" />
     <ClInclude Include="dependencies\include\include\GLFW\glfw3.h" />
     <ClInclude Include="dependencies\include\include\GLFW\glfw3native.h" />
+    <ClInclude Include="FrameCounter.h" />
+    <ClInclude Include="InputManager.h" />
     <ClInclude Include="Objects\SandboxGUI.h" />
     <ClInclude Include="Shaders\Shader.h" />
+    <ClInclude Include="Simulation.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\shaderfs.glsl" />
